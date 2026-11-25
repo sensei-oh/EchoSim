@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EchoSim — Ultrasonic Smart Navigation Emulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="EchoSim.css" />
+</head>
+<body>
+  <div class="bg-layer" aria-hidden="true"></div>
+  <div class="bg-vignette" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    <header class="top-header">
+      <div class="brand-group">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 12h2M6 8v8M10 5v14M14 9v6M18 7v10M22 12h-2" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">EchoSim</h1>
+          <p class="brand-subtitle">Applied Physics &bull; Ultrasonic Smart Navigation Emulator</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="audioModeBtn" class="pill-btn active-mint" type="button" title="Cycle Audio Feedback Mode">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </svg>
+          <span id="audioModeLabel">Audio: Pings + Voice</span>
+          <span class="status-dot mint"></span>
+        </button>
+
+        <button id="blindfoldBtn" class="pill-btn" type="button" title="Toggle Blindfold Accessibility Challenge">
+          <span id="blindfoldLabel">Blindfold Mode: OFF</span>
+          <span class="status-dot amber"></span>
+        </button>
+      </div>
+    </header>
+
+    <nav class="nav-tabs" aria-label="Primary Views">
+      <button class="nav-tab active" data-tab="simulator" type="button">Simulator</button>
+      <button class="nav-tab" data-tab="definitions" type="button">Definitions &amp; Glossary</button>
+      <button class="nav-tab" data-tab="overview" type="button">Project Overview</button>
+    </nav>
+
+    <!-- TAB 1: SIMULATOR -->
+    <main id="tab-simulator" class="tab-panel active">
+      <div class="sim-grid">
+        <section class="glass-card viewport-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <svg class="mint-text" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="9" />
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+              </svg>
+              <div>
+                <h2 class="card-title">Acoustic Propagation Viewport</h2>
+                <p class="card-sub">2D Floorplan Simulation</p>
+              </div>
+            </div>
+
+            <div>
+              <label for="presetMapSelect" class="sr-only">Preset Map</label>
+              <select id="presetMapSelect" class="compact-select">
+                <option value="hallway">Preset Map: Indoor Hallway</option>
+                <option value="street">Preset Map: Street Crossing</option>
+                <option value="blindfold">Preset Map: Blindfold Challenge</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="canvas-stage" id="canvasStage">
+            <canvas id="simCanvas"></canvas>
+            <div id="blindfoldOverlay" class="blindfold-curtain hidden">
+              <div class="blindfold-badge">
+                <strong>BLINDFOLD MODE ACTIVE</strong>
+                <span>Navigate using stereo proximity pings &amp; voice alerts (WASD / Arrows / D-Pad)</span>
+              </div>
+            </div>
+            <div id="toastBanner" class="toast-banner" aria-live="polite"></div>
+          </div>
+
+          <div class="viewport-toolbar">
+            <div class="toolbar-left">
+              <button id="tapModeBtn" class="tap-toggle-btn" type="button" title="Switch between Aiming and Placing Objects">
+                <span id="tapModeText">Tap: Aim</span>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </button>
+
+              <select id="objectTypeSelect" class="compact-select" aria-label="Select Obstacle Type to Place">
+                <option value="parked_car">Add Object: Parked Car</option>
+                <option value="moving_vehicle">Add Object: Moving Vehicle</option>
+                <option value="pedestrian">Add Object: Pedestrian</option>
+                <option value="pole">Add Object: Pole / Tree</option>
+                <option value="concrete">Add Object: Concrete Wall</option>
+                <option value="glass">Add Object: Glass Partition</option>
+                <option value="fabric">Add Object: Acoustic Fabric</option>
+                <option value="overhang">Add Object: High Overhang</option>
+                <option value="curb">Add Object: Low Curb</option>
+              </select>
+
+              <button id="undoBtn" class="ghost-btn" type="button" title="Remove Last Placed Object">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 7v6h6" />
+                  <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                </svg>
+                Undo
+              </button>
+
+              <button id="resetBtn" class="ghost-btn" type="button" title="Reset Preset Map">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+                  <path d="M21 3v5h-5" />
+                </svg>
+                Reset Scene
+              </button>
+            </div>
+
+            <div class="dpad-grid" id="dpadGrid" role="group" aria-label="Navigation Controls">
+              <button class="dpad-btn" data-action="turnLeft" type="button">TURN -</button>
+              <button class="dpad-btn" data-action="forward" type="button">FWD</button>
+              <button class="dpad-btn" data-action="turnRight" type="button">TURN +</button>
+              <button class="dpad-btn" data-action="strafeLeft" type="button">LEFT</button>
+              <button class="dpad-btn" data-action="backward" type="button">BACK</button>
+              <button class="dpad-btn" data-action="strafeRight" type="button">RIGHT</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="sidebar-stack">
+          <section class="glass-card side-card">
+            <div class="side-card-head">
+              <svg class="mint-text" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="2" />
+                <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" />
+              </svg>
+              <h3>Sensor Controls</h3>
+            </div>
+
+            <div class="slider-block">
+              <div class="slider-row">
+                <label for="beamSpreadSlider">Beam Cone Spread (&Phi;)</label>
+                <span id="beamSpreadVal" class="mono-val">30&deg;</span>
+              </div>
+              <input id="beamSpreadSlider" type="range" min="10" max="60" step="2" value="30" />
+            </div>
+
+            <div class="slider-block">
+              <div class="slider-row">
+                <label for="maxRangeSlider">Max Sensor Range (d<sub>max</sub>)</label>
+                <span id="maxRangeVal" class="mono-val">3.5 m</span>
+              </div>
+              <input id="maxRangeSlider" type="range" min="0.5" max="4.0" step="0.1" value="3.5" />
+            </div>
+
+            <label class="toggle-row" for="caneArcToggle">
+              <span>Show White-Cane vs. Ultrasonic Arc</span>
+              <input id="caneArcToggle" type="checkbox" checked />
+              <span class="mini-switch"></span>
+            </label>
+          </section>
+
+          <section class="glass-card side-card">
+            <div class="side-card-head">
+              <svg class="mint-text" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+              <h3>Live Telemetry</h3>
+            </div>
+
+            <div class="telemetry-grid">
+              <div class="metric-tile">
+                <span id="telDistance" class="metric-value">2.15 m</span>
+                <span class="metric-label">Detected Distance</span>
+              </div>
+              <div class="metric-tile">
+                <span id="telIntensity" class="metric-value">78.4%</span>
+                <span class="metric-label">Echo Intensity (I<sub>r</sub>)</span>
+              </div>
+              <div class="metric-tile">
+                <span id="telAngle" class="metric-value">12.8&deg;</span>
+                <span class="metric-label">Incidence Angle (&theta;<sub>i</sub>)</span>
+              </div>
+              <div class="metric-tile">
+                <span id="telMaterial" class="metric-value">Concrete</span>
+                <span class="metric-label">Surface Material</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="glass-card side-card signal-card">
+            <div class="side-card-head">
+              <svg class="mint-text" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12h4l3-7 4 14 3-7h6" />
+              </svg>
+              <h3>Acoustic Signal: Trigger vs. Echo</h3>
+            </div>
+
+            <div class="scope-box">
+              <canvas id="signalCanvas"></canvas>
+            </div>
+            <div class="scope-caption">
+              <span>Trigger vs. Echo &bull; 2.5 ms/div</span>
+              <span id="pulseDelayText" class="mono-sub">&Delta;t = 12.5 ms</span>
+            </div>
+          </section>
+
+          <section class="glass-card side-card">
+            <div class="side-card-head">
+              <svg class="mint-text" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3v18M3 7h18M5 7l-2 6h4l-2-6zm14 0l-2 6h4l-2-6z" />
+              </svg>
+              <h3>White-Cane vs. Ultrasonic Comparison</h3>
+            </div>
+
+            <table class="comp-table">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>White Cane</th>
+                  <th>Ultrasonic Aid</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Detection Range</td>
+                  <td class="mono-cell">~1.10m</td>
+                  <td id="compRangeCell" class="mono-cell mint-text">~3.50m</td>
+                </tr>
+                <tr>
+                  <td>Overhang Detection</td>
+                  <td class="coral-text">Missed</td>
+                  <td class="mint-text">Detected</td>
+                </tr>
+                <tr>
+                  <td>Steep Glass</td>
+                  <td>Tactile</td>
+                  <td id="compGlassCell" class="sky-text">Specular Loss</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <!-- TAB 2: DEFINITIONS & GLOSSARY -->
+    <section id="tab-definitions" class="tab-panel">
+      <div class="glass-card section-banner">
+        <div>
+          <h2>Definitions &amp; Glossary</h2>
+          <p>Simple Guide to How Ultrasonic Navigation Works</p>
+        </div>
+        <div class="filter-pills" id="filterPills" role="group" aria-label="Filter Definitions by Category">
+          <button class="filter-pill active" data-filter="all" type="button">All</button>
+          <button class="filter-pill" data-filter="physics" type="button">Wave Physics</button>
+          <button class="filter-pill" data-filter="navigation" type="button">Navigation &amp; Cane</button>
+          <button class="filter-pill" data-filter="signals" type="button">Signals &amp; Audio</button>
+        </div>
+      </div>
+
+      <div class="glossary-columns">
+        <div class="glass-card glossary-col" data-category="physics">
+          <div class="col-header">
+            <h3>Wave Physics</h3>
+            <span class="count-badge">4 Terms</span>
+          </div>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Specular Loss (Deflection)</h4>
+              <span class="tag-pill mint">Pulse-Echo</span>
+            </div>
+            <p>When sound hits a very smooth, angled surface—like a glass door at a slant—it bounces away like a flashlight beam off a mirror instead of returning to the sensor, making the glass invisible to the ultrasonic beam.</p>
+          </article>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Incidence Angle (&theta;<sub>i</sub>)</h4>
+              <span class="tag-pill neutral">Acoustics</span>
+            </div>
+            <p>The slant angle at which a sound wave hits a wall or object. Hitting straight-on sends a strong echo back; hitting at a steep angle causes the sound to bounce sideways.</p>
+          </article>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Echo Intensity (I<sub>r</sub>)</h4>
+              <span class="tag-pill neutral">Acoustics</span>
+            </div>
+            <p>How loud and clear the returning echo is. Hard, flat walls send back a strong echo, while soft materials or angled surfaces send back a weak one.</p>
+          </article>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Beam Cone Spread (&Phi;)</h4>
+              <span class="tag-pill mint">Pulse-Echo</span>
+            </div>
+            <p>How wide the sensor&apos;s invisible sound cone spreads out in front of the user (30&deg; by default)—wider cones spot obstacles off to the sides, while narrower cones focus straight ahead.</p>
+          </article>
+        </div>
+
+        <div class="glass-card glossary-col" data-category="navigation">
+          <div class="col-header">
+            <h3>Navigation &amp; Cane</h3>
+            <span class="count-badge">4 Terms</span>
+          </div>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Tactile Hit</h4>
+              <span class="tag-pill amber">Hazard</span>
+            </div>
+            <p>Physically tapping an obstacle at ground level with a traditional white cane (within a ~1.1 m sweep) to feel what is directly in front of your feet.</p>
+          </article>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Head / Chest Overhang</h4>
+              <span class="tag-pill coral">Hazard</span>
+            </div>
+            <p>Objects sticking out at upper-body height—like low tree branches, wall-mounted signs, or open truck tailgates—that a ground cane passes right underneath without touching, but an ultrasonic beam catches early.</p>
+          </article>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Low Curb / Step</h4>
+              <span class="tag-pill amber">Hazard</span>
+            </div>
+            <p>Small height changes on the ground like sidewalk edges or stairs. Because they sit low to the floor, a white cane detects them reliably even when a chest-level ultrasonic sensor might miss them.</p>
+          </article>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Blindfold Mode</h4>
+              <span class="tag-pill mint">Pulse-Echo</span>
+            </div>
+            <p>A training mode that hides the visual floorplan so you can test navigating purely by listening to the stereo proximity beeps and voice warnings.</p>
+          </article>
+        </div>
+
+        <div class="glass-card glossary-col" data-category="signals">
+          <div class="col-header">
+            <h3>Signals &amp; Audio</h3>
+            <span class="count-badge">3 Terms</span>
+          </div>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Trigger vs. Echo Pulse</h4>
+              <span class="tag-pill sky">Audio</span>
+            </div>
+            <p>A live timing chart comparing two signals: the Trigger (when the sensor sends out a tiny 40 kHz ultrasonic chirp) and the Echo (when the bounce-back arrives). A wider gap between them means the obstacle is farther away.</p>
+          </article>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Stereo Proximity Pings</h4>
+              <span class="tag-pill sky">Audio</span>
+            </div>
+            <p>Audio beeps that speed up and rise in pitch as you get closer to an object, shifting between your left and right ear to show which side the obstacle is on.</p>
+          </article>
+
+          <article class="term-card">
+            <div class="term-top">
+              <h4>Material Acoustic Impedance</h4>
+              <span class="tag-pill sky">Audio</span>
+            </div>
+            <p>How much a material resists or absorbs sound waves—hard concrete bounces sound right back, while soft curtains soak up the sound like a sponge.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: PROJECT OVERVIEW -->
+    <section id="tab-overview" class="tab-panel">
+      <div class="overview-grid">
+        <div class="glass-card overview-main">
+          <h2>EchoSim &mdash; Ultrasonic Smart Navigation Emulator</h2>
+
+          <div class="overview-block">
+            <h3>The Real-World Problem</h3>
+            <p>A traditional white cane is great for finding curbs and obstacles on the ground (within about 1.1 meters), but it cannot detect hazards at head or chest height—like low tree branches, wall-mounted signs, or open tailgates—before a person walks into them. EchoSim shows how a simple ultrasonic sensor (like the HC-SR04 used in student hardware builds) adds an early-warning zone up to 3.5 meters ahead.</p>
+          </div>
+
+          <div class="overview-block">
+            <h3>How Pulse-Echo Sensing Works (Step by Step)</h3>
+            <ul class="clean-list">
+              <li><strong>1. Send a Sound Pulse:</strong> The sensor sends out a short, silent ultrasonic chirp (at 40 kHz, above human hearing) in a cone ahead of the user.</li>
+              <li><strong>2. Bounce Off Objects:</strong> When the sound wave hits a wall, person, or overhang, it bounces back as an echo.</li>
+              <li><strong>3. Measure the Gap:</strong> By timing how long the echo takes to return, the system calculates the exact distance to the obstacle.</li>
+              <li><strong>4. Alert the User:</strong> That distance is converted into faster audio beeps, left/right stereo cues, and clear voice warnings.</li>
+            </ul>
+          </div>
+
+          <div class="overview-block">
+            <h3>Why Combine a White Cane with Ultrasonic Sensing?</h3>
+            <ul class="clean-list">
+              <li><strong>Better Coverage:</strong> The cane protects the ground path (curbs and steps), while the ultrasonic beam scans forward at chest and head level.</li>
+              <li><strong>Spotting Sensor Limits:</strong> EchoSim also demonstrates real edge cases—such as smooth angled glass deflecting sound away or soft curtains absorbing echoes—proving why both tools work best together.</li>
+            </ul>
+          </div>
+
+          <div class="overview-block">
+            <h3>Real-World Wearable Hardware Ideas</h3>
+            <div class="hardware-grid">
+              <div class="hw-card">
+                <h4>Smart Ultrasonic Cane</h4>
+                <p>A small ultrasonic module clipped onto a standard white cane to warn about chest-level obstacles up to 3.5 m ahead.</p>
+              </div>
+              <div class="hw-card">
+                <h4>Bone-Conduction Headset</h4>
+                <p>Delivers left/right proximity beeps and voice alerts without blocking natural street sounds around the user.</p>
+              </div>
+              <div class="hw-card">
+                <h4>Haptic Wristband</h4>
+                <p>Uses gentle vibration pulses that speed up as you get closer to an object for quiet, hands-free feedback.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="glass-card overview-side">
+          <div class="side-header-block">
+            <h3>Supported Environment Materials</h3>
+            <p>How Different Surfaces React to Ultrasonic Waves</p>
+          </div>
+
+          <div class="material-list">
+            <div class="material-item">
+              <span class="mat-name"><i class="dot slate"></i>Concrete</span>
+              <div class="mat-desc">
+                <p>Hard, solid wall that bounces sound straight back clearly.</p>
+                <span>Gives the strongest, most reliable distance reading.</span>
+              </div>
+            </div>
+
+            <div class="material-item">
+              <span class="mat-name"><i class="dot sky"></i>Specular Glass</span>
+              <div class="mat-desc">
+                <p>Very smooth surface that deflects sound sideways when approached at an angle.</p>
+                <span>Shows why angled glass can fool ultrasonic sensors and still needs a cane check.</span>
+              </div>
+            </div>
+
+            <div class="material-item">
+              <span class="mat-name"><i class="dot violet"></i>Acoustic Fabric</span>
+              <div class="mat-desc">
+                <p>Soft curtains or cloth that soak up sound energy instead of bouncing it back.</p>
+                <span>Produces a weak echo, reducing detection range.</span>
+              </div>
+            </div>
+
+            <div class="material-item">
+              <span class="mat-name"><i class="dot coral"></i>Overhang</span>
+              <div class="mat-desc">
+                <p>Elevated obstacles at chest or head height that a ground cane passes right under.</p>
+                <span>Caught early by the forward ultrasonic beam before impact.</span>
+              </div>
+            </div>
+
+            <div class="material-item">
+              <span class="mat-name"><i class="dot amber"></i>Low Curb</span>
+              <div class="mat-desc">
+                <p>Ground-level step or sidewalk edge detected inside the 1.1 m cane sweep.</p>
+                <span>Highlights why ground cane feedback remains essential.</span>
+              </div>
+            </div>
+
+            <div class="material-item">
+              <span class="mat-name"><i class="dot mint"></i>Target Zone</span>
+              <div class="mat-desc">
+                <p>Safe destination marker showing a clear walking path.</p>
+                <span>Helps test navigation in both normal and Blindfold Mode.</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
