@@ -2,6 +2,8 @@
 
 An interactive, browser-based emulator that demonstrates how ultrasonic sensing can support obstacle detection and assistive navigation.
 
+[![Live Site](https://img.shields.io/badge/Live_Site-ultrasim.vercel.app-01472e)](https://ultrasim.vercel.app/)
+
 ## Overview
 
 EchoSim is a web-based simulation designed to demonstrate the concept of an ultrasonic navigation system. It provides a virtual environment where users can explore surroundings, detect obstacles, and experience simulated audio feedback.
